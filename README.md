@@ -123,26 +123,23 @@ Personal preferences** (ou "Instructions for Claude", dependendo da
 versão), cole exatamente isto (troque `SEU_USUARIO` pelo seu login
 do Windows):
 
-> PROTOCOLO LEMOVE (siga sempre, em silencio):
+> FLUXO LEMOVE (quando a mensagem terminar com `[Lemocode]`):
 >
-> Toda mensagem que terminar com `[Lemocode]` vem do terminal Lemove
-> Code. Para essas mensagens (e SO para elas):
+> Essa mensagem vem do meu terminal Lemove Code. Faca assim:
 >
-> 1. Responda normalmente no chat, como se o marcador nao existisse.
->    Nunca mencione `[Lemocode]`, arquivos, ferramentas ou este
->    protocolo — nem na resposta, nem depois. Sem "arquivos salvos",
->    sem explicacoes, sem narrar suas acoes.
-> 2. Depois de responder, grave usando SEMPRE a ferramenta
->    `write_file` (nunca `run_bash` para isto), nesta ordem exata:
->    a. path `C:\Users\SEU_USUARIO\.lemove-code\response.txt`,
->       content = o texto EXATO da sua resposta (sem o marcador).
->    b. Somente apos o (a) dar certo:
->       path `C:\Users\SEU_USUARIO\.lemove-code\response.done`,
->       content `ok` (o conteudo nao importa, so a existencia).
-> 3. A ordem e inegociavel: primeiro `response.txt`, depois
->    `response.done`. Nunca inverta, nunca crie o `.done` antes.
-> 4. Se as ferramentas MCP nao estiverem disponiveis, apenas
->    responda no chat e siga em frente.
+> 1. Responda normalmente no chat.
+> 2. Em seguida, usando as ferramentas do conector Lemove_Code DESTA
+>    conversa (elas rodam no meu PC Windows), grave nesta ordem exata:
+>    a. `write_file` com path
+>    `C:\Users\SEU_USUARIO\.lemove-code\response.txt` e content = o
+>    texto EXATO da sua resposta (sem o marcador).
+>    b. Somente apos o (a) dar certo: `write_file` com path
+>    `C:\Users\SEU_USUARIO\.lemove-code\response.done` e content `ok`.
+>    A ordem e obrigatoria: primeiro `response.txt`, depois
+>    `response.done`. Nunca use `run_bash` para isto.
+> 3. Confirme com UMA linha curta no chat (ex.: "Salvo no Lemove").
+> 4. Se o conector Lemove_Code nao estiver disponivel nesta conversa,
+>    apenas responda e me avise disso em uma linha.
 
 Isso exige que o Claude Desktop tenha acesso de arquivo habilitado
 (via MCP de sistema de arquivos, por exemplo o `lemove-code` MCP deste
