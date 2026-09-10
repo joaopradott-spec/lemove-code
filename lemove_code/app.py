@@ -85,6 +85,10 @@ HELP_TEXT = """\
    Ctrl+O     Restaurar janela do Claude
    Ctrl+C     Sair
 
+[bold]Botoes[/]
+   Restaurar janela   Traz a janela do Claude de volta
+   Colar              Cola o clipboard no campo de mensagem
+
 [dim]Pressione qualquer tecla para fechar[/]
 """
 
@@ -334,9 +338,30 @@ class ChatScreen(Screen):
     }
 
     #prompt-input {
+        width: 1fr;
         background: #14141b;
         border: none;
         color: #e6e6ea;
+    }
+
+    #paste-btn {
+        width: auto;
+        min-width: 9;
+        height: 1;
+        background: #3a3a4a;
+        color: #e6e6ea;
+        border: none;
+        margin: 0 1 0 0;
+    }
+
+    #paste-btn:hover {
+        background: #c792ff;
+        color: #0d0d12;
+    }
+
+    #paste-btn:focus {
+        background: #c792ff;
+        color: #0d0d12;
     }
     """
 
@@ -388,11 +413,12 @@ class ChatScreen(Screen):
 
         yield Static(self._status_line(), id="status-bar")
 
-        with Vertical(id="input-wrap"):
+        with Horizontal(id="input-wrap"):
             yield Input(
                 placeholder="Mensagem... (/help, !cmd, @arquivo)",
                 id="prompt-input",
             )
+            yield Button("Colar", id="paste-btn")
 
         yield Footer()
 
@@ -616,6 +642,35 @@ class ChatScreen(Screen):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "restore-btn":
             self.action_restore_window()
+        elif event.button.id == "paste-btn":
+            self._paste_clipboard()
+
+    def _paste_clipboard(self) -> None:
+        try:
+            import pyperclip
+            text = pyperclip.paste()
+        except Exception:
+            self._add_bubble("Erro", "Nao consegui ler o clipboard.", "error")
+            return
+        if not text or not str(text).strip():
+            self._add_bubble("", "Clipboard vazio.", "system")
+            return
+        try:
+            inp = self.query_one("#prompt-input", Input)
+            cur = inp.value
+            try:
+                pos = inp.cursor_position
+            except Exception:
+                pos = len(cur)
+            pos = max(0, min(pos, len(cur)))
+            inp.value = cur[:pos] + str(text) + cur[pos:]
+            try:
+                inp.cursor_position = pos + len(str(text))
+            except Exception:
+                pass
+            inp.focus()
+        except Exception as e:
+            self._add_bubble("Erro", f"Nao consegui colar: {e}", "error")
 
     @work(thread=True)
     def _restore_window_bg(self) -> None:

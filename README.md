@@ -90,6 +90,7 @@ Dentro da interface:
 - `/sair`, `/exit` ou `/quit` — fecha.
 - **Ctrl+L** — limpa. **Ctrl+C** — sai.
 - Botão **Restaurar janela** (topo, `Ctrl+O` ou `/janela`) — traz a janela do Claude Desktop de volta pra tela, na posição/tamanho de antes.
+- Botão **Colar** (ao lado do campo) — cola o clipboard no campo de mensagem, sem enviar.
 
 O rodapé mostra o status em tempo real: `pronto` (verde), `pensando…`
 (laranja, enquanto espera o Claude Desktop) ou `erro` (vermelho).
