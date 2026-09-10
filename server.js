@@ -429,7 +429,28 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         const filePath = resolveInProject(args.path);
         const original = fs.readFileSync(filePath, "utf-8");
         const count = original.split(args.old_str).length - 1;
-        if (count === 0) return err("❌ old_str não foi encontrado no arquivo.");
+        if (count === 0) {
+          // Nao achou: ajuda mostrando o trecho mais parecido, para
+          // quem chamou se corrigir em vez de tentar no escuro.
+          let hint = "";
+          const candLines = String(args.old_str || "").split("\n")
+            .map((l) => l.trim()).filter((l) => l.length >= 10)
+            .sort((a, b) => b.length - a.length);
+          const token = candLines.length
+            ? ((candLines[0].match(/[A-Za-z_]{6,}/g) || []).sort((a, b) => b.length - a.length)[0] || "")
+            : "";
+          if (token) {
+            const lines = original.split("\n");
+            const idx = lines.findIndex((l) => l.includes(token));
+            if (idx >= 0) {
+              const lo = Math.max(0, idx - 2), hi = Math.min(lines.length, idx + 4);
+              hint = "\nTrecho parecido no arquivo (linhas " + (lo + 1) + "-" + hi + "):\n" +
+                lines.slice(lo, hi).map((l, i) => String(lo + i + 1).padStart(4, " ") + "│ " + l).join("\n") +
+                "\nReleia o arquivo e monte o old_str exato.";
+            }
+          }
+          return err("❌ old_str não foi encontrado no arquivo." + hint);
+        }
         if (count > 1)  return err(`❌ old_str aparece ${count} vezes. Inclua mais contexto.`);
         fs.writeFileSync(filePath, original.replace(args.old_str, args.new_str), "utf-8");
         const rel = path.relative(activeProject, filePath) || filePath;
