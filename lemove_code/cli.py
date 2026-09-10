@@ -23,7 +23,7 @@ from pathlib import Path
 from . import __version__
 
 # URL do repositório — troque pelo seu quando publicar no GitHub
-GITHUB_REPO = "https://github.com/SEU_USUARIO/lemove-code"
+GITHUB_REPO = "https://github.com/joaopradott-spec/lemove-code"
 INSTALL_URL = f"git+{GITHUB_REPO}.git"
 
 
@@ -33,7 +33,7 @@ def _print_version() -> None:
 
 def _do_update() -> None:
     """Atualiza o pacote a partir do GitHub via pip."""
-    print(f"\n  ⌬ Lemove Code — Atualizador")
+    print("\n  Lemove Code - Atualizador")
     print(f"  Versão atual: v{__version__}")
     print(f"  Fonte: {GITHUB_REPO}\n")
 
@@ -70,16 +70,16 @@ def _do_update() -> None:
         new_version = "?"
 
     if new_version == __version__:
-        print(f"\n  ✔ Já está na versão mais recente: v{__version__}\n")
+        print(f"\n  [OK] Ja esta na versao mais recente: v{__version__}\n")
     else:
-        print(f"\n  ✔ Atualizado: v{__version__} → v{new_version}\n")
+        print(f"\n  [OK] Atualizado: v{__version__} -> v{new_version}\n")
         print("  Abra um novo terminal para usar a versão atualizada.\n")
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="lemovecode",
-        description="Lemove Code ⌬ — terminal estilo OpenCode usando o Claude Desktop como cérebro.",
+        description="Lemove Code - terminal estilo OpenCode usando o Claude Desktop como cerebro.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
             "Exemplos:\n"
