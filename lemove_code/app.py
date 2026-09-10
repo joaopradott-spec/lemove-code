@@ -609,7 +609,7 @@ class ChatScreen(Screen):
         self._waiting = False
         self.status_text = "pronto"
         self.status_kind = "ready"
-        self._add_bubble("", "Espera cancelada.", kind="system")
+        self._add_bubble("", "Espera cancelada. Se o Claude ainda estiver gerando, aguarde terminar antes de enviar.", kind="system")
 
     # ── acoes ─────────────────────────────────────────────────────────── #
 
