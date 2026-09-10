@@ -352,7 +352,7 @@ const TOOLS = [
 
 // ── Handlers ──────────────────────────────────────────────────────────────
 const server = new Server(
-  { name: "lemove-code", version: "0.3.0" },
+  { name: "lemove-code", version: "0.4.0-beta" },
   { capabilities: { tools: {} } }
 );
 
@@ -727,7 +727,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error(`Lemove Code MCP v0.3.0 rodando. Projeto ativo: ${shortPath(activeProject)}`);
+  console.error(`Lemove Code MCP v0.4.0-beta rodando. Projeto ativo: ${shortPath(activeProject)}`);
 }
 
 main().catch((err) => {

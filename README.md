@@ -11,6 +11,10 @@ comando `opencode` funciona no projeto original.
 
 ## 1. Instalação
 
+> Prefere baixar pronto? Pega o `.zip` da última versão em
+> **Releases** (https://github.com/joaopradott-spec/lemove-code/releases),
+> extrai e usa a Opção A.
+
 Precisa de **Python 3.9+** e **Node 18+** no Windows.
 
 ### Opção A — instalador (recomendado)

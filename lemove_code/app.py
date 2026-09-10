@@ -1,5 +1,5 @@
 """
-lemove_code.app  v0.3.1
+lemove_code.app  v0.4.0-beta
 ------------------------
 Interface estilo OpenCode usando Textual.
 CSS definido como DEFAULT_CSS (atributo de classe) — compatível com

@@ -1,6 +1,6 @@
 {
   "name": "lemove-code",
-  "version": "0.1.0",
+  "version": "0.4.0-beta",
   "description": "Servidor MCP protótipo que dá ao Claude Desktop ferramentas de leitura/escrita/edição de arquivos e execução bash, tipo o Claude Code.",
   "main": "server.js",
   "scripts": {
