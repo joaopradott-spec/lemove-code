@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+.venv/
+venv/
+.env
+dist/
+build/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Logs / saidas locais de teste
+app_full_test.txt
+css_test.txt
+diag.txt
+env.txt
+textual_test.txt
+*.log
+
+# Runtime do lemove-code (resposta do Claude Desktop)
+.lemove-code/
+response.txt
+response.done
+
+# Windows / editores
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
