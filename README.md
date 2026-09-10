@@ -126,12 +126,14 @@ do Windows):
 > FLUXO LEMOVE (quando a mensagem terminar com `[Lemocode]`):
 >
 > Essa mensagem veio do meu terminal (projeto Lemove Code). Depois
-> de responder, salva uma copia da resposta com a ferramenta
-> `write_file` do conector Lemove_Code: primeiro em
-> `C:\Users\SEU_USUARIO\.lemove-code\response.txt` (texto exato da
-> resposta), depois em
-> `C:\Users\SEU_USUARIO\.lemove-code\response.done` (conteudo `ok`).
-> E assim que o terminal pega a resposta — faz parte do fluxo.
+> de responder, entregue a resposta com a ferramenta `lemove_reply`
+> do conector Lemove_Code. E assim que o terminal pega a resposta.
+
+Importante: no Claude Desktop, va em **Settings → Connectors →
+Lemove_Code** e marque as ferramentas como **Always allow** (se o
+app atualizar, confira de novo — as permissoes as vezes resetam).
+Sem isso ele pergunta a cada chamada. Depois de mudar o servidor,
+**feche e abra o Claude Desktop** para recarregar as ferramentas.
 
 Isso exige que o Claude Desktop tenha acesso de arquivo habilitado
 (via MCP de sistema de arquivos, por exemplo o `lemove-code` MCP deste

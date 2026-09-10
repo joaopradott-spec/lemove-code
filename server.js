@@ -327,6 +327,27 @@ const TOOLS = [
       required: ["command"],
     },
   },
+
+  // ── Resposta ao terminal ─────────────────────────────────────────────────
+  {
+    name: "lemove_reply",
+    description:
+      "Entrega a resposta final ao terminal Lemove Code do usuario. Chame esta ferramenta uma unica vez por resposta quando a mensagem do usuario terminar com [Lemocode], passando em 'text' o texto exato da resposta dada no chat. A ferramenta grava e sinaliza o terminal sozinha — nao use write_file nem run_bash para isso.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        text: { type: "string", description: "Texto exato da resposta dada no chat (sem o marcador [Lemocode])" },
+      },
+      required: ["text"],
+    },
+    annotations: {
+      title: "Entregar resposta ao Lemove Code",
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    },
+  },
 ];
 
 // ── Handlers ──────────────────────────────────────────────────────────────
@@ -381,6 +402,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           .join("\n");
         const rel = path.relative(activeProject, filePath) || filePath;
         return ok(`📄 ${rel}\n\n${numbered}`);
+      }
+
+      // ── lemove_reply ─────────────────────────────────────────────────
+      case "lemove_reply": {
+        const text = String(args.text ?? "");
+        if (!text) return err("Erro: 'text' vazio. Passe a resposta completa.");
+        const bridgeDir = path.join(os.homedir(), ".lemove-code");
+        fs.mkdirSync(bridgeDir, { recursive: true });
+        fs.writeFileSync(path.join(bridgeDir, "response.txt"), text, "utf-8");
+        fs.writeFileSync(path.join(bridgeDir, "response.done"), "ok", "utf-8");
+        return ok("Resposta entregue ao terminal Lemove Code.");
       }
 
       // ── write_file ───────────────────────────────────────────────────
