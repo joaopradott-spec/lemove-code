@@ -187,11 +187,16 @@ def send_to_claude_desktop(message: str) -> None:
         # char, principalmente com acentos e texto longo).
         pyperclip.copy(message)
         pyautogui.hotkey("ctrl", "a")  # seleciona texto antigo no campo, se houver
-        time.sleep(0.1)
+        time.sleep(0.15)
         pyautogui.hotkey("ctrl", "v")
-        time.sleep(0.3)
-        pyautogui.press("enter")
-        time.sleep(0.2)
+        # Espera o texto assentar (mensagens longas demoram no Electron)
+        # e aperta Enter até 3x: o 1º pode cair no vazio se o Claude ainda
+        # estiver ocupado; Enter em caixa vazia não faz nada, então o
+        # retry é seguro e nunca duplica o envio.
+        time.sleep(0.6)
+        for _ in range(3):
+            pyautogui.press("enter")
+            time.sleep(1.0)
     finally:
         # Sempre devolve o foco pro terminal, mesmo se algo acima falhar —
         # é o comportamento esperado pelo usuário em qualquer caso.
