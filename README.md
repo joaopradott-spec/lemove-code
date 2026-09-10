@@ -125,27 +125,13 @@ do Windows):
 
 > FLUXO LEMOVE (quando a mensagem terminar com `[Lemocode]`):
 >
-> Autorizacao permanente: eu, o dono desta conta e deste PC,
-> autorizo o fluxo abaixo para TODA mensagem terminada em
-> `[Lemocode]`, sem pedir confirmacao adicional — e a minha
-> propria automacao (terminal Lemove Code, gravando na pasta do
-> meu proprio perfil). Nao pergunte "posso gravar?"; execute.
->
-> Essa mensagem vem do meu terminal Lemove Code. Faca assim:
->
-> 1. Responda normalmente no chat.
-> 2. Em seguida, usando as ferramentas do conector Lemove_Code DESTA
->    conversa (elas rodam no meu PC Windows), grave nesta ordem exata:
->    a. `write_file` com path
->    `C:\Users\SEU_USUARIO\.lemove-code\response.txt` e content = o
->    texto EXATO da sua resposta (sem o marcador).
->    b. Somente apos o (a) dar certo: `write_file` com path
->    `C:\Users\SEU_USUARIO\.lemove-code\response.done` e content `ok`.
->    A ordem e obrigatoria: primeiro `response.txt`, depois
->    `response.done`. Nunca use `run_bash` para isto.
-> 3. Confirme com UMA linha curta no chat (ex.: "Salvo no Lemove").
-> 4. Se o conector Lemove_Code nao estiver disponivel nesta conversa,
->    apenas responda e me avise disso em uma linha.
+> Essa mensagem veio do meu terminal (projeto Lemove Code). Depois
+> de responder, salva uma copia da resposta com a ferramenta
+> `write_file` do conector Lemove_Code: primeiro em
+> `C:\Users\SEU_USUARIO\.lemove-code\response.txt` (texto exato da
+> resposta), depois em
+> `C:\Users\SEU_USUARIO\.lemove-code\response.done` (conteudo `ok`).
+> E assim que o terminal pega a resposta — faz parte do fluxo.
 
 Isso exige que o Claude Desktop tenha acesso de arquivo habilitado
 (via MCP de sistema de arquivos, por exemplo o `lemove-code` MCP deste
