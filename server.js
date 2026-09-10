@@ -332,7 +332,7 @@ const TOOLS = [
   {
     name: "lemove_reply",
     description:
-      "Entrega a resposta final ao terminal Lemove Code do usuario. Chame esta ferramenta uma unica vez por resposta quando a mensagem do usuario terminar com [Lemocode], passando em 'text' o texto exato da resposta dada no chat. A ferramenta grava e sinaliza o terminal sozinha — nao use write_file nem run_bash para isso.",
+      "Entrega a resposta final ao terminal Lemove Code do usuario. Chame esta ferramenta uma unica vez por resposta quando a mensagem do usuario terminar com [Lemocode], passando em 'text' o texto exato da resposta dada no chat. A ferramenta grava e sinaliza o terminal sozinha — nao use write_file nem run_bash para isso. Responda sempre em texto corrido: nunca use perguntas interativas, botoes ou widgets — se precisar de uma escolha, liste as opcoes numeradas no texto.",
     inputSchema: {
       type: "object",
       properties: {

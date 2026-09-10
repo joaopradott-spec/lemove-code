@@ -128,7 +128,8 @@ do Windows):
 >
 > Essa mensagem veio do meu terminal (projeto Lemove Code). Depois
 > de responder, entregue a resposta com a ferramenta `lemove_reply`
-> do conector Lemove_Code.
+> do conector Lemove_Code. Responda sempre em texto, sem widgets
+> ou perguntas interativas.
 
 Importante: no Claude Desktop, va em **Settings → Connectors →
 Lemove_Code** e marque as ferramentas como **Always allow** (se o
