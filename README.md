@@ -84,6 +84,7 @@ A espera pela resposta não tem limite de tempo (`Ctrl+G` cancela se precisar).
 
 Dentro da interface:
 
+- Ao abrir, o Lemove abre o Claude Desktop sozinho se ele estiver fechado.
 - Digite a mensagem e aperte **Enter**.
 - `/limpar` ou `/clear` — limpa o histórico da tela.
 - `/sair`, `/exit` ou `/quit` — fecha.

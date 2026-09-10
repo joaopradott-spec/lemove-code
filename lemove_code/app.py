@@ -399,7 +399,25 @@ class ChatScreen(Screen):
     def on_mount(self) -> None:
         bridge.ensure_bridge_dir()
         self._load_project_files_bg()
+        self._ensure_claude_bg()
         self.query_one("#prompt-input", Input).focus()
+
+    @work(thread=True)
+    def _ensure_claude_bg(self) -> None:
+        try:
+            self.app.call_from_thread(setattr, self, "status_text", "abrindo Claude Desktop...")
+            self.app.call_from_thread(setattr, self, "status_kind", "thinking")
+            result = bridge.ensure_claude_running()
+            if result == "started":
+                self.app.call_from_thread(
+                    self._add_bubble, "", "Claude Desktop aberto automaticamente.", "system")
+            self.app.call_from_thread(setattr, self, "status_text", "pronto")
+            self.app.call_from_thread(setattr, self, "status_kind", "ready")
+        except bridge.BridgeError as e:
+            self.app.call_from_thread(setattr, self, "status_text", "pronto")
+            self.app.call_from_thread(setattr, self, "status_kind", "ready")
+            self.app.call_from_thread(
+                self._add_bubble, "", f"{e}", "system")
 
     # ── status ────────────────────────────────────────────────────────── #
 

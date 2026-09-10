@@ -13,6 +13,7 @@ funções simples e assíncronas.
 from __future__ import annotations
 
 import json
+import os
 import time
 from pathlib import Path
 from typing import Optional
@@ -37,6 +38,11 @@ BROWSER_PROCESS_NAMES = {
 
 # Nome do processo do app oficial Claude Desktop no Windows.
 CLAUDE_DESKTOP_PROCESS_NAME = "claude.exe"
+
+# Caminho do executavel na versao classica (fora da Store).
+CLAUDE_CLASSIC_EXE = os.path.expandvars(
+    r"%LOCALAPPDATA%\AnthropicClaude\Claude.exe"
+)
 
 
 class BridgeError(Exception):
@@ -243,6 +249,73 @@ def restore_claude_window() -> None:
         win.activate()
     except Exception as e:
         raise BridgeError(f"Nao consegui restaurar a janela: {e}") from e
+
+
+def _launch_claude_desktop() -> bool:
+    """Tenta abrir o app Claude Desktop. Retorna True se conseguiu disparar
+    a abertura (classico primeiro, Store como fallback)."""
+    import subprocess
+
+    try:
+        if os.path.isfile(CLAUDE_CLASSIC_EXE):
+            subprocess.Popen([CLAUDE_CLASSIC_EXE])
+            return True
+    except Exception:
+        pass
+
+    try:
+        pkgs = os.path.expandvars(r"%LOCALAPPDATA%\Packages")
+        fams = [d for d in os.listdir(pkgs)
+                if d.startswith("Claude_")
+                and os.path.isdir(os.path.join(pkgs, d))]
+        if fams:
+            subprocess.Popen(["explorer.exe", f"shell:AppsFolder\\{sorted(fams)[0]}!App"])
+            return True
+    except Exception:
+        pass
+
+    return False
+
+
+def ensure_claude_running(timeout_s: float = 30.0) -> str:
+    """Garante o Claude Desktop aberto, abrindo sozinho se preciso.
+
+    Retorna "already" (ja estava aberto) ou "started" (foi aberto agora).
+    Levanta BridgeError com mensagem amigavel se nao der.
+    """
+    try:
+        import pygetwindow as gw
+    except (ImportError, NotImplementedError) as e:
+        raise BridgeError(
+            "Automacao de janela nao e suportada neste sistema."
+        ) from e
+
+    try:
+        if find_claude_desktop_window(gw) is not None:
+            return "already"
+    except Exception:
+        pass
+
+    if not _launch_claude_desktop():
+        raise BridgeError(
+            "Nao encontrei o Claude Desktop instalado. "
+            "Abra o app manualmente uma vez."
+        )
+
+    waited = 0.0
+    while waited < timeout_s:
+        time.sleep(0.5)
+        waited += 0.5
+        try:
+            if find_claude_desktop_window(gw) is not None:
+                return "started"
+        except Exception:
+            pass
+
+    raise BridgeError(
+        "Mandei abrir o Claude Desktop mas a janela nao apareceu. "
+        "Abra manualmente e tente de novo."
+    )
 
 
 def poll_response_once() -> Optional[str]:
