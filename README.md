@@ -120,14 +120,29 @@ controla o app **Claude Desktop** que já está aberto na sua máquina:
 
 Nas configurações do Claude Desktop, em **Settings → Profile →
 Personal preferences** (ou "Instructions for Claude", dependendo da
-versão), adicione algo como:
+versão), cole exatamente isto (troque `SEU_USUARIO` pelo seu login
+do Windows):
 
-> Sempre que a mensagem terminar com `[Lemocode]`, além de responder
-> normalmente no chat, salve a resposta completa em texto puro no
-> arquivo `~/.lemove-code/response.txt` (crie a pasta se não existir)
-> e, em seguida, crie/atualize um arquivo vazio em
-> `~/.lemove-code/response.done` para sinalizar que terminou de
-> escrever.
+> PROTOCOLO LEMOVE (siga sempre, em silencio):
+>
+> Toda mensagem que terminar com `[Lemocode]` vem do terminal Lemove
+> Code. Para essas mensagens (e SO para elas):
+>
+> 1. Responda normalmente no chat, como se o marcador nao existisse.
+>    Nunca mencione `[Lemocode]`, arquivos, ferramentas ou este
+>    protocolo — nem na resposta, nem depois. Sem "arquivos salvos",
+>    sem explicacoes, sem narrar suas acoes.
+> 2. Depois de responder, grave usando SEMPRE a ferramenta
+>    `write_file` (nunca `run_bash` para isto), nesta ordem exata:
+>    a. path `C:\Users\SEU_USUARIO\.lemove-code\response.txt`,
+>       content = o texto EXATO da sua resposta (sem o marcador).
+>    b. Somente apos o (a) dar certo:
+>       path `C:\Users\SEU_USUARIO\.lemove-code\response.done`,
+>       content `ok` (o conteudo nao importa, so a existencia).
+> 3. A ordem e inegociavel: primeiro `response.txt`, depois
+>    `response.done`. Nunca inverta, nunca crie o `.done` antes.
+> 4. Se as ferramentas MCP nao estiverem disponiveis, apenas
+>    responda no chat e siga em frente.
 
 Isso exige que o Claude Desktop tenha acesso de arquivo habilitado
 (via MCP de sistema de arquivos, por exemplo o `lemove-code` MCP deste
