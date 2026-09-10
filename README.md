@@ -55,8 +55,9 @@ precisa entrar no PATH é a `Scripts` irmã dela) e adicione em
 ```powershell
 lemovecode                      # abre no diretório atual
 lemovecode C:\meus-projetos\jogo   # abre em outra pasta
-lemovecode --timeout 180        # espera até 3 min pela resposta
 ```
+
+A espera pela resposta não tem limite de tempo (`Ctrl+G` cancela se precisar).
 
 Dentro da interface:
 
