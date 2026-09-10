@@ -12,6 +12,7 @@ funções simples e assíncronas.
 
 from __future__ import annotations
 
+import json
 import time
 from pathlib import Path
 from typing import Optional
@@ -21,6 +22,7 @@ from typing import Optional
 BRIDGE_DIR = Path.home() / ".lemove-code"
 RESPONSE_FILE = BRIDGE_DIR / "response.txt"
 SIGNAL_FILE = BRIDGE_DIR / "response.done"  # marcador de "terminei de escrever"
+WINDOW_FILE = BRIDGE_DIR / "window.json"  # posicao/tamanho da janela antes de esconder
 
 TRIGGER_WORD = "Lemocode"
 HIDDEN_INSTRUCTION = "\n\n[{trigger}]"
@@ -164,6 +166,9 @@ def send_to_claude_desktop(message: str) -> None:
         # Move a janela para bem longe da área visível de qualquer monitor,
         # mantendo o mesmo tamanho — ela continua "existindo" para o Windows
         # (então clique/teclado funcionam normalmente), só não aparece na tela.
+        # Guarda a posicao/tamanho atual para o botao "Restaurar janela"
+        # poder trazer de volta depois.
+        _save_window_geometry(win)
         win.moveTo(-32000, -32000)
         time.sleep(0.2)
         win.activate()
@@ -185,6 +190,59 @@ def send_to_claude_desktop(message: str) -> None:
         # Sempre devolve o foco pro terminal, mesmo se algo acima falhar —
         # é o comportamento esperado pelo usuário em qualquer caso.
         _restore_foreground_window(terminal_handle)
+
+
+def _save_window_geometry(win) -> None:
+    """Salva posicao/tamanho atuais da janela para restauracao futura."""
+    try:
+        ensure_bridge_dir()
+        geom = {"left": win.left, "top": win.top,
+                "width": win.width, "height": win.height}
+        WINDOW_FILE.write_text(json.dumps(geom), encoding="utf-8")
+    except Exception:
+        pass  # geometria e best-effort; a restauracao tem fallback
+
+
+def restore_claude_window() -> None:
+    """Traz a janela do Claude Desktop de volta para a area visivel,
+    na posicao/tamanho que tinha antes de ser escondida.
+
+    Levanta BridgeError com mensagem amigavel em caso de falha.
+    """
+    try:
+        import pygetwindow as gw
+    except (ImportError, NotImplementedError) as e:
+        raise BridgeError(
+            "Automacao de janela nao e suportada neste sistema."
+        ) from e
+
+    win = find_claude_desktop_window(gw)
+    if win is None:
+        raise BridgeError(
+            "Nao encontrei a janela do app Claude Desktop. "
+            "Abra o app Claude Desktop de verdade e tente novamente."
+        )
+
+    try:
+        geom = json.loads(WINDOW_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        geom = None
+
+    try:
+        if win.isMinimized:
+            win.restore()
+            time.sleep(0.3)
+        if geom:
+            win.moveTo(int(geom["left"]), int(geom["top"]))
+            win.resizeTo(int(geom["width"]), int(geom["height"]))
+        else:
+            # Sem geometria salva (ex: versao antiga escondeu): traz
+            # para um ponto visivel mantendo o tamanho atual.
+            win.moveTo(100, 100)
+        time.sleep(0.2)
+        win.activate()
+    except Exception as e:
+        raise BridgeError(f"Nao consegui restaurar a janela: {e}") from e
 
 
 def poll_response_once() -> Optional[str]:

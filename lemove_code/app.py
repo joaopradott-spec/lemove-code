@@ -17,10 +17,10 @@ from pathlib import Path
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Vertical, VerticalScroll
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.reactive import reactive
 from textual.screen import ModalScreen, Screen
-from textual.widgets import Footer, Input, Label, ListItem, ListView, Static
+from textual.widgets import Button, Footer, Input, Label, ListItem, ListView, Static
 
 from . import bridge
 
@@ -71,17 +71,19 @@ HELP_TEXT = """\
   /new       Nova sessao
   /clear     Limpar chat
   /sessions  Trocar sessao
-  /help      Esta tela
-  /exit      Sair
+   /help      Esta tela
+   /exit      Sair
+   /janela    Restaurar janela do Claude
 
 [bold]Prefixos[/]
   !cmd       Executa no terminal
   @arquivo   Insere arquivo na mensagem
 
 [bold]Teclado[/]
-  Ctrl+N     Nova sessao
-  Ctrl+G     Cancelar espera
-  Ctrl+C     Sair
+   Ctrl+N     Nova sessao
+   Ctrl+G     Cancelar espera
+   Ctrl+O     Restaurar janela do Claude
+   Ctrl+C     Sair
 
 [dim]Pressione qualquer tecla para fechar[/]
 """
@@ -225,10 +227,35 @@ class ChatScreen(Screen):
     #app-header {
         height: 1;
         background: #17171f;
+        dock: top;
+    }
+
+    #app-title {
+        width: 1fr;
+        height: 1;
+        background: #17171f;
         color: #c792ff;
         text-style: bold;
         padding: 0 2;
-        dock: top;
+    }
+
+    #restore-btn {
+        width: auto;
+        min-width: 18;
+        height: 1;
+        background: #3a3a4a;
+        color: #e6e6ea;
+        border: none;
+    }
+
+    #restore-btn:hover {
+        background: #c792ff;
+        color: #0d0d12;
+    }
+
+    #restore-btn:focus {
+        background: #c792ff;
+        color: #0d0d12;
     }
 
     #chat-scroll {
@@ -316,6 +343,7 @@ class ChatScreen(Screen):
     BINDINGS = [
         Binding("ctrl+n", "new_session", "Nova sessao"),
         Binding("ctrl+g", "cancel_wait", "Cancelar"),
+        Binding("ctrl+o", "restore_window", "Restaurar janela"),
     ]
 
     status_text: reactive[str] = reactive("pronto")
@@ -343,10 +371,12 @@ class ChatScreen(Screen):
     def compose(self) -> ComposeResult:
         short = _short_path(self.project_dir)
 
-        yield Static(
-            f"[\u2316] Lemove Code  {short}",
-            id="app-header",
-        )
+        with Horizontal(id="app-header"):
+            yield Static(
+                f"[\u2316] Lemove Code  {short}",
+                id="app-title",
+            )
+            yield Button("Restaurar janela", id="restore-btn")
 
         with VerticalScroll(id="chat-scroll"):
             yield ChatBubble(
@@ -454,6 +484,8 @@ class ChatScreen(Screen):
             self._open_sessions_modal()
         elif cmd == "/help":
             self.app.push_screen(HelpScreen())
+        elif cmd == "/janela":
+            self.action_restore_window()
         else:
             self._add_bubble("", f"Comando desconhecido: {cmd}  (tente /help)", kind="system")
 
@@ -562,6 +594,22 @@ class ChatScreen(Screen):
         self._add_bubble("", "Espera cancelada.", kind="system")
 
     # ── acoes ─────────────────────────────────────────────────────────── #
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "restore-btn":
+            self.action_restore_window()
+
+    @work(thread=True)
+    def _restore_window_bg(self) -> None:
+        try:
+            bridge.restore_claude_window()
+            self.app.call_from_thread(
+                self._add_bubble, "", "Janela do Claude Desktop restaurada.", "system")
+        except bridge.BridgeError as e:
+            self.app.call_from_thread(self._add_bubble, "Erro", str(e), "error")
+
+    def action_restore_window(self) -> None:
+        self._restore_window_bg()
 
     def action_cancel_wait(self) -> None:
         if self._waiting:
