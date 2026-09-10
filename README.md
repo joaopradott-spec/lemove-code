@@ -11,24 +11,47 @@ comando `opencode` funciona no projeto original.
 
 ## 1. Instalação
 
-Precisa de **Python 3.9+** instalado no Windows (marque "Add python.exe
-to PATH" no instalador do Python, se ainda não tiver).
+Precisa de **Python 3.9+** e **Node 18+** no Windows.
 
-### Opção A — instalador automático
+### Opção A — instalador (recomendado)
 
-Dê duplo clique em **`instalar.bat`** (ou rode pelo terminal). Ele:
+Dê duplo clique em **`instalar.bat`**. Ele faz tudo sozinho:
 
-1. Confere se o Python está no PATH.
-2. Roda `pip install -e .` na pasta do projeto.
-3. Isso cria o comando `lemovecode` — o `pip` gera um `lemovecode.exe`
-   de lançador dentro da pasta `Scripts` do Python, que normalmente já
-   está no PATH do Windows.
+1. Confere Python e Node.
+2. Instala o comando `lemovecode` (`pip install -e .`).
+3. Instala as dependências do servidor MCP (`npm install`).
+4. Registra o MCP `lemove-code` no Claude Desktop (sem apagar sua config atual).
+5. Verifica se o comando e o `server.js` estão OK.
+
+Ou pelo terminal:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File install.ps1
+```
+
+Depois, **só na primeira vez**: feche e abra o Claude Desktop (para carregar o MCP) e cadastre o gatilho (veja seção 3).
+
+Para atualizar depois: `lemovecode --update`.
 
 ### Opção B — manual
 
 ```powershell
 cd caminho\para\lemove-code
 pip install -e .
+npm install
+```
+
+E registre o MCP à mão em `%APPDATA%\Claude\claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "lemove-code": {
+      "command": "node",
+      "args": ["C:\\caminho\\para\\lemove-code\\server.js"]
+    }
+  }
+}
 ```
 
 Depois, **abra um terminal novo** e teste:
