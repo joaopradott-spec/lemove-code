@@ -65,43 +65,62 @@ if ($nodeOk) {
 # ---------- 4. Registrar MCP no Claude Desktop ----------
 Step "4/5 Registrando MCP no Claude Desktop"
 try {
-    $claudeDir = Join-Path $env:APPDATA "Claude"
-    $configPath = Join-Path $claudeDir "claude_desktop_config.json"
     $serverJs = Join-Path $RepoDir "server.js"
+
+    # O Claude Desktop pode ser a versao classica (%APPDATA%\Claude)
+    # ou a da Microsoft Store (outro caminho). Registra em todas
+    # as instalacoes encontradas.
+    $configPaths = @((Join-Path $env:APPDATA "Claude\claude_desktop_config.json"))
+    $storeBase = Join-Path $env:LOCALAPPDATA "Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude"
+    if (Test-Path -LiteralPath $storeBase) {
+        $configPaths += (Join-Path $storeBase "claude_desktop_config.json")
+    }
 
     if (-not $nodeOk) {
         Warn "pulado (sem Node). Depois de instalar o Node, rode o instalador de novo."
     } else {
-        if (-not (Test-Path -LiteralPath $claudeDir)) {
-            New-Item -ItemType Directory -Path $claudeDir | Out-Null
-        }
-        $config = @{}
-        if (Test-Path -LiteralPath $configPath) {
-            try {
-                # Compativel com Windows PowerShell 5.1 (sem -AsHashtable):
-                # le como objeto e normaliza para hashtable.
-                $raw = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
-                foreach ($p in $raw.PSObject.Properties) { $config[$p.Name] = $p.Value }
-            } catch {
-                $bak = "$configPath.bak-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
-                Copy-Item -LiteralPath $configPath -Destination $bak -Force
-                Warn "config existente estava com JSON invalido, backup em $bak. Criando novo."
-                $config = @{}
-            }
-        }
-        $servers = @{}
-        if ($config.ContainsKey("mcpServers") -and $null -ne $config["mcpServers"]) {
-            foreach ($p in $config["mcpServers"].PSObject.Properties) { $servers[$p.Name] = $p.Value }
-        }
-        $servers["lemove-code"] = @{
-            command = "node"
-            args    = @($serverJs)
-        }
-        $config["mcpServers"] = $servers
-        # Sem BOM: alguns parsers de JSON rejeitam BOM no inicio do arquivo.
         $utf8NoBom = New-Object System.Text.UTF8Encoding $false
-        [System.IO.File]::WriteAllText($configPath, ($config | ConvertTo-Json -Depth 10), $utf8NoBom)
-        Ok "MCP 'lemove-code' registrado em $configPath"
+        foreach ($configPath in $configPaths) {
+            $claudeDir = Split-Path -Parent $configPath
+            if (-not (Test-Path -LiteralPath $claudeDir)) {
+                New-Item -ItemType Directory -Path $claudeDir | Out-Null
+            }
+            $config = @{}
+            if (Test-Path -LiteralPath $configPath) {
+                try {
+                    # Compativel com Windows PowerShell 5.1 (sem -AsHashtable):
+                    # le como objeto e normaliza para hashtable.
+                    $raw = Get-Content -LiteralPath $configPath -Raw -Encoding UTF8 | ConvertFrom-Json
+                    foreach ($p in $raw.PSObject.Properties) { $config[$p.Name] = $p.Value }
+                } catch {
+                    $bak = "$configPath.bak-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+                    Copy-Item -LiteralPath $configPath -Destination $bak -Force
+                    Warn "config existente estava com JSON invalido, backup em $bak. Criando novo."
+                    $config = @{}
+                }
+            }
+            $servers = @{}
+            if ($config.ContainsKey("mcpServers") -and $null -ne $config["mcpServers"]) {
+                foreach ($p in $config["mcpServers"].PSObject.Properties) { $servers[$p.Name] = $p.Value }
+            }
+            # Se ja existe entrada criada pela UI ("Lemove_Code"), atualiza
+            # o caminho dela em vez de duplicar o conector. Senao, cria
+            # a canonica "lemove-code".
+            $uiKey = @($servers.Keys) | Where-Object { $_ -ne "lemove-code" -and $_.Replace("_","-") -eq "lemove-code" } | Select-Object -First 1
+            if ($uiKey) {
+                $servers[$uiKey].args = @($serverJs)
+                $servers[$uiKey].command = "node"
+            } else {
+                $servers["lemove-code"] = @{
+                    command = "node"
+                    args    = @($serverJs)
+                }
+            }
+            $config["mcpServers"] = $servers
+            # Sem BOM: alguns parsers de JSON rejeitam BOM no inicio do arquivo.
+            [System.IO.File]::WriteAllText($configPath, ($config | ConvertTo-Json -Depth 10), $utf8NoBom)
+            Ok "MCP registrado em $configPath"
+        }
         Warn "feche e abra o Claude Desktop para ele carregar o MCP."
     }
 } catch { Fail "registro do MCP falhou: $_" }
