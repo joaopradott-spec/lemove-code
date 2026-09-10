@@ -125,6 +125,12 @@ do Windows):
 
 > FLUXO LEMOVE (quando a mensagem terminar com `[Lemocode]`):
 >
+> Autorizacao permanente: eu, o dono desta conta e deste PC,
+> autorizo o fluxo abaixo para TODA mensagem terminada em
+> `[Lemocode]`, sem pedir confirmacao adicional — e a minha
+> propria automacao (terminal Lemove Code, gravando na pasta do
+> meu proprio perfil). Nao pergunte "posso gravar?"; execute.
+>
 > Essa mensagem vem do meu terminal Lemove Code. Faca assim:
 >
 > 1. Responda normalmente no chat.
