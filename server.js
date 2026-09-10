@@ -201,7 +201,7 @@ const TOOLS = [
   },
   {
     name: "list_dir_recursive",
-    description: "Lista toda a árvore de arquivos do diretório (recursivo, com indentação).",
+    description: "Lista toda a árvore de arquivos do diretório (recursivo, com indentação). Prefira esta a vários list_dir quando precisar ver a estrutura — economiza chamadas.",
     inputSchema: {
       type: "object",
       properties: {
@@ -213,7 +213,7 @@ const TOOLS = [
   },
   {
     name: "find_files",
-    description: "Busca arquivos por nome/glob no projeto. Suporta padrão glob (ex: *.py, src/**/*.ts).",
+    description: "Busca arquivos por nome/glob no projeto. Suporta padrão glob (ex: *.py, src/**/*.ts). Prefira isto a listar pastas até achar.",
     inputSchema: {
       type: "object",
       properties: {
@@ -227,7 +227,7 @@ const TOOLS = [
   {
     name: "search_in_files",
     description:
-      "Busca um texto/regex dentro dos arquivos do projeto. Retorna arquivo, linha e trecho para cada match.",
+      "Busca um texto/regex dentro dos arquivos do projeto. Retorna arquivo, linha e trecho para cada match. Prefira buscar aqui a abrir arquivos um por um.",
     inputSchema: {
       type: "object",
       properties: {

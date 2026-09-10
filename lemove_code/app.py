@@ -26,6 +26,9 @@ from . import bridge
 
 # ── Sessões ───────────────────────────────────────────────────────────────
 
+# Segundos sem resposta antes de sugerir o botao Continuar do Claude.
+STALL_NUDGE_S = 120
+
 SESSIONS_FILE = Path.home() / ".lemove-code" / "sessions.json"
 
 
@@ -606,11 +609,20 @@ class ChatScreen(Screen):
         self.app.call_from_thread(setattr, self, "status_text", "pensando...  Ctrl+G cancela")
 
         response: str | None = None
+        wait_start = time.monotonic()
+        nudged = False
         while not self._cancel_requested:
             result = bridge.poll_response_once()
             if result is not None:
                 response = result
                 break
+            if not nudged and time.monotonic() - wait_start > STALL_NUDGE_S:
+                nudged = True
+                self.app.call_from_thread(
+                    self._add_bubble, "",
+                    "Demorando... se o Claude parou no limite de ferramentas, "
+                    "restaure a janela e clique Continuar.",
+                    "system")
             time.sleep(0.25)
 
         if self._cancel_requested:

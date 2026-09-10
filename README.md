@@ -95,6 +95,11 @@ Dentro da interface:
 O rodapé mostra o status em tempo real: `pronto` (verde), `pensando…`
 (laranja, enquanto espera o Claude Desktop) ou `erro` (vermelho).
 
+Se o Claude parar no meio com "atingiu seu limite de uso de
+ferramentas", o Lemove fica esperando: restaure a janela (botão,
+`Ctrl+O` ou `/janela`) e clique **Continuar** no Claude — ele retoma
+e a resposta chega. Para tarefas grandes, mande em partes menores.
+
 ---
 
 ## 3. Como funciona por baixo dos panos
