@@ -16,6 +16,8 @@ Flags disponíveis:
 from __future__ import annotations
 
 import argparse
+import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -76,6 +78,35 @@ def _do_update() -> None:
         print("  Abra um novo terminal para usar a versão atualizada.\n")
 
 
+def _doctor() -> int:
+    """Diagnostico reproduzivel sem abrir a interface grafica."""
+    import platform
+    checks: list[tuple[str, bool, str]] = []
+    checks.append(("Windows", platform.system() == "Windows", platform.platform()))
+    checks.append(("Python 3.9+", sys.version_info >= (3, 9), sys.version.split()[0]))
+    node = shutil.which("node")
+    checks.append(("Node", node is not None, node or "nao encontrado"))
+    try:
+        import textual
+        checks.append(("Textual", True, getattr(textual, "__version__", "instalado")))
+    except Exception as exc:
+        checks.append(("Textual", False, str(exc)))
+    try:
+        from . import bridge
+        bridge.ensure_bridge_dir()
+        checks.append(("Diretorio de dados", True, str(bridge.BRIDGE_DIR)))
+    except Exception as exc:
+        checks.append(("Diretorio de dados", False, str(exc)))
+    config = Path.home() / "AppData" / "Roaming" / "Claude" / "claude_desktop_config.json"
+    checks.append(("Config Claude", config.exists(), str(config)))
+    print("\n  Lemove Code - Diagnostico\n")
+    for label, passed, detail in checks:
+        print(f"  [{'OK' if passed else 'ERRO'}] {label}: {detail}")
+    failed = sum(not item[1] for item in checks)
+    print(f"\n  {len(checks) - failed}/{len(checks)} verificacoes aprovadas.\n")
+    return 1 if failed else 0
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="lemovecode",
@@ -105,6 +136,7 @@ def main() -> None:
         action="store_true",
         help="Mostra a versão instalada e sai.",
     )
+    parser.add_argument("--doctor", action="store_true", help="Diagnostica a instalacao e sai.")
 
     args = parser.parse_args()
 
@@ -115,6 +147,9 @@ def main() -> None:
     if args.update:
         _do_update()
         return
+
+    if args.doctor:
+        raise SystemExit(_doctor())
 
     # ── Abre a TUI ──────────────────────────────────────────────────
     target = args.directory or "."

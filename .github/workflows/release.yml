@@ -1,4 +1,4 @@
-name: Beta Release
+name: Release
 
 on:
   push:
@@ -16,17 +16,29 @@ jobs:
       - name: Pack source zip
         run: git archive -o lemove-code-${{ github.ref_name }}.zip HEAD
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Pack Claude Desktop extension
+        run: |
+          npm ci --omit=dev
+          npx -y @anthropic-ai/mcpb validate .
+          npx -y @anthropic-ai/mcpb pack . lemove-code-${{ github.ref_name }}.mcpb
+
       - name: Write release notes
         run: |
           cat > RELEASE_NOTES.md <<'NOTES_EOF'
-          Beta do Lemove Code - terminal estilo OpenCode usando o Claude Desktop como cerebro.
+          Lemove Code - terminal estilo OpenCode usando o Claude Desktop como cerebro.
 
-          Instalacao: baixe o .zip abaixo, extraia e de duplo clique em instalar.bat (precisa de Python 3.9+ e Node 18+).
+          Instalacao classica: baixe o .zip, extraia e de duplo clique em instalar.bat.
+          Extensao MCP: instale o arquivo .mcpb pelo Claude Desktop.
 
-          Novidades desta beta: instalador completo com registro automatico do MCP, ferramenta lemove_reply (resposta em 1 chamada), auto-abertura do Claude Desktop, botao Restaurar janela (Ctrl+O), botao Colar, aviso de limite de ferramentas, espera sem timeout.
+          Consulte o README para configuracao, seguranca e uso.
           NOTES_EOF
 
-      - name: Create GitHub prerelease
-        run: gh release create "${{ github.ref_name }}" --prerelease --title "${{ github.ref_name }}" --notes-file RELEASE_NOTES.md "lemove-code-${{ github.ref_name }}.zip"
+      - name: Create GitHub release
+        run: gh release create "${{ github.ref_name }}" --title "${{ github.ref_name }}" --notes-file RELEASE_NOTES.md "lemove-code-${{ github.ref_name }}.zip" "lemove-code-${{ github.ref_name }}.mcpb"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

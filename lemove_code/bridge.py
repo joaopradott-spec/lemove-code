@@ -15,6 +15,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import uuid
 from pathlib import Path
 from typing import Optional
 
@@ -24,6 +25,8 @@ BRIDGE_DIR = Path.home() / ".lemove-code"
 RESPONSE_FILE = BRIDGE_DIR / "response.txt"
 SIGNAL_FILE = BRIDGE_DIR / "response.done"  # marcador de "terminei de escrever"
 WINDOW_FILE = BRIDGE_DIR / "window.json"  # posicao/tamanho da janela antes de esconder
+OUTBOX_DIR = BRIDGE_DIR / "outbox"
+AUTHORIZED_PROJECTS_FILE = BRIDGE_DIR / "authorized-projects.json"
 
 TRIGGER_WORD = "Lemocode"
 HIDDEN_INSTRUCTION = "\n\n[{trigger}]"
@@ -53,10 +56,40 @@ def ensure_bridge_dir() -> None:
     BRIDGE_DIR.mkdir(parents=True, exist_ok=True)
 
 
-def build_message(user_text: str) -> str:
+def register_project(project_dir: Path) -> None:
+    """Autoriza explicitamente uma raiz aberta pela TUI para o servidor MCP."""
+    ensure_bridge_dir()
+    target = str(project_dir.resolve())
+    payload = {"version": 1, "projects": [{"path": target, "openedAt": time.time()}]}
+    _atomic_write(AUTHORIZED_PROJECTS_FILE, json.dumps(payload, ensure_ascii=False))
+
+
+def new_request_id() -> str:
+    return uuid.uuid4().hex
+
+
+def _atomic_write(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    temp.write_text(content, encoding="utf-8")
+    temp.replace(path)
+
+
+def build_message(user_text: str, *, request_id: str | None = None,
+                  session_id: str | None = None, project_dir: Path | None = None) -> str:
     """Monta a mensagem real enviada ao Claude Desktop, com a palavra-gatilho
     que ativa a regra configurada nas Instructions for Claude."""
-    return user_text + HIDDEN_INSTRUCTION.format(trigger=TRIGGER_WORD)
+    metadata = []
+    if request_id:
+        metadata.append(f"request_id={request_id}")
+    if session_id:
+        metadata.append(f"session_id={session_id}")
+    if project_dir:
+        metadata.append(f"project={project_dir.resolve()}")
+    suffix = HIDDEN_INSTRUCTION.format(trigger=TRIGGER_WORD)
+    if metadata:
+        suffix = f"\n\n[Lemove metadata: {'; '.join(metadata)}]{suffix}"
+    return user_text + suffix
 
 
 def _get_process_name_for_window(win) -> Optional[str]:
@@ -185,6 +218,11 @@ def send_to_claude_desktop(message: str) -> None:
     try:
         # Cola a mensagem via clipboard (mais confiável que digitar char a
         # char, principalmente com acentos e texto longo).
+        previous_clipboard = None
+        try:
+            previous_clipboard = pyperclip.paste()
+        except Exception:
+            pass
         pyperclip.copy(message)
         pyautogui.hotkey("ctrl", "a")  # seleciona texto antigo no campo, se houver
         time.sleep(0.15)
@@ -196,6 +234,11 @@ def send_to_claude_desktop(message: str) -> None:
         pyautogui.press("enter")
         time.sleep(0.2)
     finally:
+        if previous_clipboard is not None:
+            try:
+                pyperclip.copy(previous_clipboard)
+            except Exception:
+                pass
         # Sempre devolve o foco pro terminal, mesmo se algo acima falhar —
         # é o comportamento esperado pelo usuário em qualquer caso.
         _restore_foreground_window(terminal_handle)
@@ -321,11 +364,35 @@ def ensure_claude_running(timeout_s: float = 30.0) -> str:
     )
 
 
-def poll_response_once() -> Optional[str]:
+def poll_response_once(request_id: str | None = None) -> Optional[str]:
     """Checa (sem bloquear) se a resposta já está pronta.
     Retorna o texto se sim, None se ainda não. Usado por um timer da TUI
     em vez de um loop bloqueante, para não travar a interface."""
     ensure_bridge_dir()
+    OUTBOX_DIR.mkdir(parents=True, exist_ok=True)
+    if request_id:
+        response_path = OUTBOX_DIR / f"{request_id}.json"
+        if response_path.exists():
+            try:
+                envelope = json.loads(response_path.read_text(encoding="utf-8"))
+                response_path.unlink(missing_ok=True)
+                if envelope.get("requestId") != request_id:
+                    raise ValueError("requestId divergente")
+                return str(envelope.get("content", ""))
+            except (OSError, ValueError, json.JSONDecodeError):
+                return None
+        return None
+
+    # Respostas espontaneas usam seu proprio envelope; consome a mais antiga.
+    for response_path in sorted(OUTBOX_DIR.glob("*.json"), key=lambda p: p.stat().st_mtime):
+        try:
+            envelope = json.loads(response_path.read_text(encoding="utf-8"))
+            response_path.unlink(missing_ok=True)
+            return str(envelope.get("content", ""))
+        except (OSError, ValueError, json.JSONDecodeError):
+            continue
+
+    # Compatibilidade temporaria com conectores 0.x.
     if SIGNAL_FILE.exists():
         try:
             SIGNAL_FILE.unlink()
@@ -337,9 +404,15 @@ def poll_response_once() -> Optional[str]:
     return None
 
 
-def clear_pending_signal() -> None:
+def clear_pending_signal(request_id: str | None = None) -> None:
     """Limpa sinais antigos antes de esperar uma resposta nova."""
     ensure_bridge_dir()
+    if request_id:
+        try:
+            (OUTBOX_DIR / f"{request_id}.json").unlink(missing_ok=True)
+        except OSError:
+            pass
+        return
     if SIGNAL_FILE.exists():
         try:
             SIGNAL_FILE.unlink()

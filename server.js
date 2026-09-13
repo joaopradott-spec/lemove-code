@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Lemove Code — servidor MCP v0.3.0
+ * Lemove Code — servidor MCP v1.0.0
  *
  * Tools disponíveis:
  *  Projeto:    set_project, get_project
@@ -23,18 +23,17 @@ const {
 const fs   = require("fs");
 const path = require("path");
 const os   = require("os");
-const { execSync, spawnSync } = require("child_process");
+const { ProjectGuard } = require("./mcp/security");
+const { deliverResponse } = require("./mcp/responses");
+const { runProgram } = require("./mcp/process");
 
 // ── Projeto ativo ─────────────────────────────────────────────────────────
-let activeProject = path.resolve(
-  process.argv[2] || process.env.LEMOVE_BASE_DIR || os.homedir()
-);
+const configuredProject = process.argv[2] || process.env.LEMOVE_BASE_DIR;
+const guard = new ProjectGuard(configuredProject || process.cwd());
+let activeProject = guard.root;
 
 function resolveInProject(userPath) {
-  if (!userPath || userPath === ".") return activeProject;
-  return path.isAbsolute(userPath)
-    ? path.normalize(userPath)
-    : path.resolve(activeProject, userPath);
+  return guard.resolve(userPath || ".");
 }
 
 // ── Visual helpers ─────────────────────────────────────────────────────────
@@ -80,6 +79,7 @@ const TOOLS = [
       },
       required: ["path"],
     },
+    annotations: { title: "Selecionar projeto autorizado", readOnlyHint: true, destructiveHint: false },
   },
   {
     name: "get_project",
@@ -91,16 +91,17 @@ const TOOLS = [
   {
     name: "read_file",
     description:
-      "Lê o conteúdo de um arquivo de texto. Caminho relativo é resolvido a partir do projeto ativo; também aceita caminho absoluto.",
+      "Lê um arquivo de texto dentro do projeto autorizado. Caminhos externos e traversal são bloqueados.",
     inputSchema: {
       type: "object",
       properties: {
-        path: { type: "string", description: "Caminho do arquivo (relativo ao projeto ativo, ou absoluto)" },
+        path: { type: "string", description: "Caminho do arquivo dentro do projeto ativo" },
         start_line: { type: "number", description: "Linha inicial (1-indexed, opcional)" },
         end_line:   { type: "number", description: "Linha final inclusive (opcional)" },
       },
       required: ["path"],
     },
+    annotations: { title: "Ler arquivo", readOnlyHint: true, destructiveHint: false },
   },
   {
     name: "write_file",
@@ -113,6 +114,7 @@ const TOOLS = [
       },
       required: ["path", "content"],
     },
+    annotations: { title: "Gravar arquivo", readOnlyHint: false, destructiveHint: true },
   },
   {
     name: "edit_file",
@@ -127,6 +129,7 @@ const TOOLS = [
       },
       required: ["path", "old_str", "new_str"],
     },
+    annotations: { title: "Editar arquivo", readOnlyHint: false, destructiveHint: true },
   },
   {
     name: "create_directory",
@@ -138,6 +141,7 @@ const TOOLS = [
       },
       required: ["path"],
     },
+    annotations: { title: "Criar pasta", readOnlyHint: false, destructiveHint: false },
   },
   {
     name: "delete_file",
@@ -150,6 +154,7 @@ const TOOLS = [
       },
       required: ["path"],
     },
+    annotations: { title: "Excluir arquivo", readOnlyHint: false, destructiveHint: true },
   },
   {
     name: "move_file",
@@ -177,7 +182,7 @@ const TOOLS = [
   },
   {
     name: "get_file_info",
-    description: "Retorna metadados de um arquivo/pasta: tamanho, data, tipo, permissões.",
+    description: "Retorna metadados de um arquivo/pasta: tamanho, data, tipo, permissões. ATENÇÃO: para pastas, o tamanho via stat é sempre 0 B e NÃO significa pasta vazia — o retorno inclui contagem de itens. Para ver o conteúdo, use list_dir/list_dir_recursive.",
     inputSchema: {
       type: "object",
       properties: {
@@ -326,6 +331,7 @@ const TOOLS = [
       },
       required: ["command"],
     },
+    annotations: { title: "Executar comando", readOnlyHint: false, destructiveHint: true, openWorldHint: true },
   },
 
   // ── Resposta ao terminal ─────────────────────────────────────────────────
@@ -337,6 +343,8 @@ const TOOLS = [
       type: "object",
       properties: {
         text: { type: "string", description: "Texto exato da resposta dada no chat (sem o marcador [Lemocode])" },
+        request_id: { type: "string", description: "request_id recebido em Lemove metadata" },
+        session_id: { type: "string", description: "session_id recebido em Lemove metadata" },
       },
       required: ["text"],
     },
@@ -350,9 +358,30 @@ const TOOLS = [
   },
 ];
 
+// Metadados consistentes ajudam o host a exigir consentimento nas mutacoes.
+const READ_ONLY_TOOLS = new Set([
+  "get_project", "read_file", "get_file_info", "list_dir",
+  "list_dir_recursive", "find_files", "search_in_files", "git_status",
+  "git_diff", "git_log",
+]);
+const DESTRUCTIVE_TOOLS = new Set([
+  "write_file", "edit_file", "delete_file", "move_file", "copy_file",
+  "git_add", "git_commit", "git_checkout", "run_bash",
+]);
+for (const tool of TOOLS) {
+  tool.annotations = {
+    title: tool.annotations?.title || tool.name,
+    readOnlyHint: READ_ONLY_TOOLS.has(tool.name),
+    destructiveHint: DESTRUCTIVE_TOOLS.has(tool.name),
+    idempotentHint: tool.name === "lemove_reply" || READ_ONLY_TOOLS.has(tool.name),
+    openWorldHint: tool.name === "run_bash",
+    ...tool.annotations,
+  };
+}
+
 // ── Handlers ──────────────────────────────────────────────────────────────
 const server = new Server(
-  { name: "lemove-code", version: "0.4.0-beta" },
+  { name: "lemove-code", version: "1.0.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -376,12 +405,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── set_project ──────────────────────────────────────────────────
       case "set_project": {
-        const target = path.resolve(args.path);
-        if (!fs.existsSync(target))
-          return err(`Erro: a pasta "${target}" não existe.`);
-        if (!fs.statSync(target).isDirectory())
-          return err(`Erro: "${target}" não é uma pasta.`);
-        activeProject = target;
+        activeProject = guard.setProject(args.path);
         return ok(box("Lemove Code", ["Projeto ativo:", activeProject]));
       }
 
@@ -406,13 +430,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── lemove_reply ─────────────────────────────────────────────────
       case "lemove_reply": {
-        const text = String(args.text ?? "");
-        if (!text) return err("Erro: 'text' vazio. Passe a resposta completa.");
-        const bridgeDir = path.join(os.homedir(), ".lemove-code");
-        fs.mkdirSync(bridgeDir, { recursive: true });
-        fs.writeFileSync(path.join(bridgeDir, "response.txt"), text, "utf-8");
-        fs.writeFileSync(path.join(bridgeDir, "response.done"), "ok", "utf-8");
-        return ok("Resposta entregue ao terminal Lemove Code.");
+        const envelope = deliverResponse(args);
+        return ok(`Resposta entregue ao terminal Lemove Code (${envelope.requestId}).`);
       }
 
       // ── write_file ───────────────────────────────────────────────────
@@ -445,7 +464,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── delete_file ──────────────────────────────────────────────────
       case "delete_file": {
-        const target = resolveInProject(args.path);
+        const target = guard.resolve(args.path, { allowRoot: false });
         if (!fs.existsSync(target)) return err(`❌ Não encontrado: ${target}`);
         const stat = fs.statSync(target);
         if (stat.isDirectory()) {
@@ -488,8 +507,35 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         if (!fs.existsSync(target)) return err(`❌ Não encontrado: ${target}`);
         const stat = fs.statSync(target);
         const rel  = path.relative(activeProject, target) || target;
+        if (stat.isDirectory()) {
+          // stat.size de pasta é sempre 0 no Windows/Node — não significa vazia.
+          // Retorna contagem de itens + soma dos arquivos imediatos (barato, sem recursão).
+          let entries = [];
+          try {
+            entries = fs.readdirSync(target, { withFileTypes: true });
+          } catch (e) {
+            return err(`❌ Sem permissão para ler a pasta: ${rel} (${e.message})`);
+          }
+          const numDirs  = entries.filter((e) => e.isDirectory()).length;
+          const numFiles = entries.length - numDirs;
+          let bytesImediatos = 0;
+          for (const e of entries) {
+            if (e.isDirectory()) continue;
+            try { bytesImediatos += fs.statSync(path.join(target, e.name)).size; }
+            catch { /* ignora arquivo sem permissão */ }
+          }
+          const info = [
+            `Tipo:     pasta`,
+            `Itens:    ${entries.length} (${numDirs} pastas, ${numFiles} arquivos)`,
+            `Tamanho:  ${sizeHuman(bytesImediatos)} (soma dos arquivos imediatos; pastas contam 0 via stat)`,
+            `Criado:   ${stat.birthtime.toLocaleString("pt-BR")}`,
+            `Modificado: ${stat.mtime.toLocaleString("pt-BR")}`,
+            `Dica:     use list_dir para ver o conteúdo — 0 B via stat NUNCA significa pasta vazia`,
+          ];
+          return ok(box(rel, info));
+        }
         const info = [
-          `Tipo:     ${stat.isDirectory() ? "pasta" : "arquivo"}`,
+          `Tipo:     arquivo`,
           `Tamanho:  ${sizeHuman(stat.size)}`,
           `Criado:   ${stat.birthtime.toLocaleString("pt-BR")}`,
           `Modificado: ${stat.mtime.toLocaleString("pt-BR")}`,
@@ -643,73 +689,68 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
       // ── git_status ───────────────────────────────────────────────────
       case "git_status": {
-        const output = execSync("git status", { cwd: activeProject, encoding: "utf-8" });
+        const output = runProgram("git", ["status"], { cwd: activeProject });
         return ok(terminalBlock("git status", output.trim()));
       }
 
       // ── git_diff ─────────────────────────────────────────────────────
       case "git_diff": {
-        const staged = args.staged ? "--cached " : "";
-        const file   = args.path ? ` -- "${resolveInProject(args.path)}"` : "";
-        const cmd    = `git diff ${staged}${file}`.trim();
-        const output = execSync(cmd, { cwd: activeProject, encoding: "utf-8", maxBuffer: 5 * 1024 * 1024 });
-        return ok(terminalBlock(cmd, output.trim() || "(sem diferenças)"));
+        const commandArgs = ["diff"];
+        if (args.staged) commandArgs.push("--cached");
+        if (args.path) commandArgs.push("--", resolveInProject(args.path));
+        const output = runProgram("git", commandArgs, { cwd: activeProject });
+        return ok(terminalBlock(`git ${commandArgs.join(" ")}`, output || "(sem diferenças)"));
       }
 
       // ── git_log ──────────────────────────────────────────────────────
       case "git_log": {
         const count  = args.count || 10;
-        const file   = args.path ? ` -- "${resolveInProject(args.path)}"` : "";
-        const cmd    = `git log --oneline -n ${count}${file}`;
-        const output = execSync(cmd, { cwd: activeProject, encoding: "utf-8" });
-        return ok(terminalBlock(cmd, output.trim()));
+        const commandArgs = ["log", "--oneline", "-n", String(count)];
+        if (args.path) commandArgs.push("--", resolveInProject(args.path));
+        const output = runProgram("git", commandArgs, { cwd: activeProject });
+        return ok(terminalBlock(`git ${commandArgs.join(" ")}`, output));
       }
 
       // ── git_add ──────────────────────────────────────────────────────
       case "git_add": {
         const target = args.path ? resolveInProject(args.path) : ".";
-        const output = execSync(`git add "${target}"`, { cwd: activeProject, encoding: "utf-8" });
+        runProgram("git", ["add", "--", target], { cwd: activeProject });
         return ok(`✅ git add concluído: ${args.path || "."}`);
       }
 
       // ── git_commit ───────────────────────────────────────────────────
       case "git_commit": {
-        const output = execSync(
-          `git commit -m "${args.message.replace(/"/g, '\\"')}"`,
-          { cwd: activeProject, encoding: "utf-8" }
-        );
-        return ok(terminalBlock("git commit", output.trim()));
+        const output = runProgram("git", ["commit", "-m", args.message], { cwd: activeProject });
+        return ok(terminalBlock("git commit", output));
       }
 
       // ── git_branch ───────────────────────────────────────────────────
       case "git_branch": {
-        const flag   = args.all ? "-a" : "";
-        const output = execSync(`git branch ${flag}`, { cwd: activeProject, encoding: "utf-8" });
-        return ok(terminalBlock(`git branch ${flag}`, output.trim()));
+        const commandArgs = ["branch"];
+        if (args.all) commandArgs.push("-a");
+        const output = runProgram("git", commandArgs, { cwd: activeProject });
+        return ok(terminalBlock(`git ${commandArgs.join(" ")}`, output));
       }
 
       // ── git_checkout ─────────────────────────────────────────────────
       case "git_checkout": {
-        const flag   = args.create ? "-b " : "";
-        const output = execSync(`git checkout ${flag}"${args.branch}"`, {
-          cwd: activeProject, encoding: "utf-8",
-        });
-        return ok(terminalBlock(`git checkout ${flag}${args.branch}`, output.trim()));
+        const commandArgs = ["checkout"];
+        if (args.create) commandArgs.push("-b");
+        commandArgs.push(args.branch);
+        const output = runProgram("git", commandArgs, { cwd: activeProject });
+        return ok(terminalBlock(`git ${commandArgs.join(" ")}`, output));
       }
 
       // ── run_bash ─────────────────────────────────────────────────────
       case "run_bash": {
         const timeout = args.timeout || 30000;
+        const shell = process.platform === "win32" ? process.env.ComSpec || "cmd.exe" : "/bin/sh";
+        const shellArgs = process.platform === "win32" ? ["/d", "/s", "/c", args.command] : ["-c", args.command];
         let output;
         try {
-          output = execSync(args.command, {
-            cwd:       activeProject,
-            encoding:  "utf-8",
-            timeout,
-            maxBuffer: 5 * 1024 * 1024,
-          });
+          output = runProgram(shell, shellArgs, { cwd: activeProject, timeout });
         } catch (execErr) {
-          output = (execErr.stdout || "") + (execErr.stderr || execErr.message);
+          output = execErr.output || execErr.message;
           return { content: [{ type: "text", text: terminalBlock(args.command, output || "(sem saída)") }], isError: true };
         }
         return ok(terminalBlock(args.command, output || "(sem saída)"));
@@ -727,7 +768,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error(`Lemove Code MCP v0.4.0-beta rodando. Projeto ativo: ${shortPath(activeProject)}`);
+  console.error(`Lemove Code MCP v1.0.0 rodando. Projeto ativo: ${shortPath(activeProject)}`);
 }
 
 main().catch((err) => {

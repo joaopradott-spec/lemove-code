@@ -151,10 +151,9 @@ if ($failures.Count -eq 0) {
     Write-Host "    2. No Claude Desktop, em Settings > Profile > Personal"
     Write-Host "       preferences, cole isto:"
     Write-Host ""
-    Write-Host "       Sempre que a mensagem terminar com [Lemocode], alem de" -ForegroundColor Yellow
-    Write-Host "       responder normalmente, salve a resposta em texto puro" -ForegroundColor Yellow
-    Write-Host "       em ~/.lemove-code/response.txt e crie o arquivo vazio" -ForegroundColor Yellow
-    Write-Host "       ~/.lemove-code/response.done para sinalizar." -ForegroundColor Yellow
+    Write-Host "       Quando a mensagem terminar com [Lemocode], leia o bloco" -ForegroundColor Yellow
+    Write-Host "       Lemove metadata, chame set_project com project e depois" -ForegroundColor Yellow
+    Write-Host "       lemove_reply com text, request_id e session_id." -ForegroundColor Yellow
     Write-Host ""
     Write-Host "  Uso:"
     Write-Host "    lemovecode               Abre no diretorio atual"

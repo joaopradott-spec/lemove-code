@@ -1,4 +1,4 @@
-# Lemove Code
+# Lemove Code 1.0
 
 Terminal bonito, estilo **OpenCode** / **Claude Code**, que usa o **Claude
 Desktop de graça** como cérebro — sem precisar de API paga.
@@ -15,7 +15,8 @@ comando `opencode` funciona no projeto original.
 > **Releases** (https://github.com/joaopradott-spec/lemove-code/releases),
 > extrai e usa a Opção A.
 
-Precisa de **Python 3.9+** e **Node 18+** no Windows.
+Precisa de **Python 3.9+** no Windows. A instalação clássica também usa
+Node 18+; o pacote `.mcpb` usa o runtime Node incorporado ao Claude Desktop.
 
 ### Opção A — instalador (recomendado)
 
@@ -35,7 +36,25 @@ powershell -ExecutionPolicy Bypass -File install.ps1
 
 Depois, **só na primeira vez**: feche e abra o Claude Desktop (para carregar o MCP) e cadastre o gatilho (veja seção 3).
 
-Para atualizar depois: `lemovecode --update`.
+Para atualizar depois: `lemovecode --update`. Para diagnosticar:
+`lemovecode --doctor`.
+
+Para publicar uma versão no GitHub, execute `publicar.bat 1.0.0`. O script
+mostra todos os arquivos, exige confirmação, roda os testes, cria commit e tag
+e faz um push atômico para `origin`.
+
+### Opção MCPB — extensão do Claude Desktop
+
+O `manifest.json` permite gerar uma extensão instalável com um clique:
+
+```powershell
+npm install
+npx @anthropic-ai/mcpb validate .
+npx @anthropic-ai/mcpb pack . dist/lemove-code-1.0.0.mcpb
+```
+
+Instale o resultado em **Settings → Extensions → Advanced settings →
+Install Extension**. O instalador clássico continua disponível.
 
 ### Opção B — manual
 
@@ -121,9 +140,10 @@ controla o app **Claude Desktop** que já está aberto na sua máquina:
 4. Quando o Claude Desktop detecta o gatilho `[Lemocode]` (você
    precisa configurar isso nas *Instructions* do Claude Desktop — veja
    abaixo), ele salva a própria resposta em
-   `~/.lemove-code/response.txt` e cria `~/.lemove-code/response.done`
-   como sinal de "terminei".
-5. O `lemovecode` detecta o sinal, lê o arquivo, e mostra a resposta
+   chama `lemove_reply`, que cria um envelope atômico em
+   `~/.lemove-code/outbox/<request-id>.json`.
+5. O `lemovecode` consome apenas a resposta com o `request-id` esperado
+   e mostra a resposta
    formatada na tela.
 
 ### Configurando o gatilho no Claude Desktop
@@ -135,16 +155,15 @@ do Windows):
 
 > FLUXO LEMOVE (quando a mensagem terminar com `[Lemocode]`):
 >
-> Essa mensagem veio do meu terminal (projeto Lemove Code). Depois
-> de responder, entregue a resposta com a ferramenta `lemove_reply`
-> do conector Lemove_Code. Responda sempre em texto, sem widgets
-> ou perguntas interativas.
+> Essa mensagem veio do terminal Lemove Code. Leia `request_id`, `session_id`
+> e `project` do bloco `Lemove metadata`. Primeiro chame `set_project` com
+> `project`. Depois de responder, chame `lemove_reply` uma única vez com o
+> texto completo e os mesmos `request_id` e `session_id`. Responda em texto,
+> sem widgets ou perguntas interativas.
 
-Importante: no Claude Desktop, va em **Settings → Connectors →
-Lemove_Code** e marque as ferramentas como **Always allow** (se o
-app atualizar, confira de novo — as permissoes as vezes resetam).
-Sem isso ele pergunta a cada chamada. Depois de mudar o servidor,
-**feche e abra o Claude Desktop** para recarregar as ferramentas.
+Não marque **Always allow** para `delete_file`, `run_bash`, `git_commit` ou
+`git_checkout`: são operações capazes de alterar dados. Depois de mudar o
+servidor, feche e abra o Claude Desktop para recarregar as ferramentas.
 
 Isso exige que o Claude Desktop tenha acesso de arquivo habilitado
 (via MCP de sistema de arquivos, por exemplo o `lemove-code` MCP deste
@@ -180,4 +199,23 @@ lemove-code/
 ├── server.js                 # MCP que dá ao Claude Desktop leitura/escrita
 ├── package.json
 └── test-client.js
+```
+
+---
+
+## 6. Segurança e testes
+
+Na versão 1.0, todas as ferramentas de arquivo ficam limitadas à pasta aberta
+na TUI, inclusive após resolução de links simbólicos. A raiz não pode ser
+apagada. Operações Git passam argumentos diretamente ao executável, sem montar
+comandos por concatenação. `run_bash` continua poderoso e deve ser aprovado
+caso a caso no Claude Desktop.
+
+As sessões usam SQLite e as respostas têm IDs independentes, permitindo mais
+de uma conversa sem misturar resultados.
+
+```powershell
+npm test
+python -m pytest
+lemovecode --doctor
 ```

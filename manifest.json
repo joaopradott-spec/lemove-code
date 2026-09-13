@@ -1,0 +1,31 @@
+{
+  "manifest_version": "0.3",
+  "name": "lemove-code",
+  "display_name": "Lemove Code",
+  "version": "1.0.0",
+  "description": "Ferramentas locais seguras de arquivos, Git e terminal para o Lemove Code.",
+  "long_description": "Servidor MCP do Lemove Code com isolamento por projeto, respostas correlacionadas e ferramentas locais para desenvolvimento.",
+  "author": {
+    "name": "Lemove Code"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/joaopradott-spec/lemove-code.git"
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "server.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server.js"]
+    }
+  },
+  "compatibility": {
+    "claude_desktop": ">=0.10.0",
+    "platforms": ["win32"],
+    "runtimes": {
+      "node": ">=18.0.0"
+    }
+  },
+  "keywords": ["code", "terminal", "filesystem", "git"]
+}
